@@ -17,10 +17,8 @@
 package eu.cdevreeze.mvnscripting
 
 /**
- * The Maven POM model as "yaidom dialect". This is a low level model.
- *
- * See http://maven.apache.org/xsd/maven-4.0.0.xsd. Model version 4.0.0 is assumed.
+ * Some console programs/script runners.
  *
  * @author Chris de Vreeze
  */
-package object model
+package console

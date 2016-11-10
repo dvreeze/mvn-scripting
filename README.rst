@@ -9,3 +9,5 @@ Typical scripting tasks made easy by this project include:
 
 * Querying a POM file for absence of snapshot dependencies
 * Querying several POM files for the same versions of some of their dependencies
+
+This project has no knowledge about effective POM files (yet?).

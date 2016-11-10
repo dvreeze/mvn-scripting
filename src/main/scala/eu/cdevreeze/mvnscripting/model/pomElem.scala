@@ -16,6 +16,8 @@
 
 package eu.cdevreeze.mvnscripting.model
 
+import java.net.URI
+
 import scala.collection.immutable
 import scala.reflect.classTag
 
@@ -278,7 +280,7 @@ object ProjectElem {
     new ProjectElem(elm)
   }
 
-  def apply(elm: simple.Elem): ProjectElem = {
-    apply(indexed.Elem(elm))
+  def apply(elm: simple.Elem, uriOption: Option[URI]): ProjectElem = {
+    apply(indexed.Elem(uriOption, elm))
   }
 }

@@ -35,7 +35,7 @@ class PomElemTest extends FunSuite {
     val docUri = classOf[PomElemTest].getResource("sample-pom.xml").toURI
     val doc = docParser.parse(docUri)
 
-    val projectElem: ProjectElem = ProjectElem(doc.documentElement)
+    val projectElem: ProjectElem = ProjectElem(doc.documentElement, doc.uriOption)
 
     assertResult(PomElem.ProjectEName) {
       projectElem.resolvedName

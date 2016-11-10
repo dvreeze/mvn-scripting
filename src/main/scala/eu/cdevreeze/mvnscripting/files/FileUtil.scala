@@ -27,6 +27,9 @@ import scala.collection.immutable
  */
 object FileUtil {
 
+  /**
+   * Finds the normal files obeying the given predicate anywhere in the tree rooted at the given root directory.
+   */
   def findFiles(rootDir: File, p: File => Boolean): immutable.IndexedSeq[File] = {
     require(rootDir.isDirectory, s"$rootDir must be a directory")
 
