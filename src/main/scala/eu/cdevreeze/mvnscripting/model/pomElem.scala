@@ -17,6 +17,7 @@
 package eu.cdevreeze.mvnscripting.model
 
 import java.net.URI
+import java.util.regex.Pattern
 
 import scala.collection.immutable
 import scala.reflect.classTag
@@ -69,11 +70,75 @@ sealed abstract class PomElem(val underlyingElem: indexed.Elem) extends ScopedEl
   final def scope: Scope = {
     underlyingElem.scope
   }
+
+  final def propertyMapInProject: Map[String, String] = {
+    val projectElem: ProjectElem =
+      underlyingElem.findAncestorOrSelf(_.resolvedName == ProjectEName).collect({ case e => ProjectElem(e) }).
+        getOrElse(sys.error(s"Missing project element as ancestor-or-self of $this"))
+
+    projectElem.propertyMap
+  }
+
+  final override def toString: String = {
+    underlyingElem.underlyingElem.toString
+  }
 }
 
 sealed trait HasTextValue extends PomElem {
 
-  final def value: String = text
+  /**
+   * The raw string value, before interpreting any properties in it.
+   */
+  final def rawValue: String = text
+
+  /**
+   * The resolved string value, after interpreting all properties in it. If not all used properties can be
+   * resolved, an exception is thrown.
+   */
+  final def resolvedValue(props: Map[String, String]): String = {
+    // Avoiding regex, but at a cost
+
+    val sb = new StringBuilder()
+
+    var (s1, s2) = spanUntilPropertyStart(rawValue)
+
+    while (s2.nonEmpty) {
+      sb.append(s1)
+      val (s2a, s2b) = spanUntilAfterPropertyEnd(s2)
+      sb.append(resolveProp(s2a, props))
+
+      val pair = spanUntilPropertyStart(s2b)
+      s1 = pair._1
+      s2 = pair._2
+    }
+    sb.append(s1)
+
+    sb.toString
+  }
+
+  private def spanUntilPropertyStart(s: String): (String, String) = {
+    val idx = s.indexOf("${")
+    if (idx < 0) (s, "") else (s.substring(0, idx), s.substring(idx)) ensuring { pair =>
+      val (s1, s2) = pair
+      (s.length == s1.length + s2.length) && s.startsWith(s1) && s.endsWith(s2) && s2.startsWith("${".take(s2.size))
+    }
+  }
+
+  private def spanUntilAfterPropertyEnd(s: String): (String, String) = {
+    val idx = s.indexOf("}")
+    if (idx < 0) sys.error(s"Missing end brace in $s") else (s.substring(0, idx + 1), s.substring(idx + 1)) ensuring { pair =>
+      (s.length == pair._1.length + pair._2.length) && s.startsWith(pair._1) && s.endsWith(pair._2)
+    }
+  }
+
+  private def resolveProp(propString: String, props: Map[String, String]): String = {
+    require(propString.startsWith("${"))
+    require(propString.endsWith("}"))
+
+    val propKey = propString.drop(2).dropRight(1)
+
+    props.getOrElse(propKey, sys.error(s"Unknown property '${propKey}'"))
+  }
 }
 
 /**
@@ -108,6 +173,10 @@ final class ProjectElem(underlyingElem: indexed.Elem) extends PomElem(underlying
 
   def propertiesOption: Option[PropertiesElem] = {
     findChildElemOfType(classTag[PropertiesElem])(anyElem)
+  }
+
+  def propertyMap: Map[String, String] = {
+    propertiesOption.map(props => props.propertyMap).getOrElse(Map())
   }
 
   def nameOption: Option[NameElem] = {
@@ -156,6 +225,11 @@ final class PropertiesElem(underlyingElem: indexed.Elem) extends PomElem(underly
 
   def properties: immutable.IndexedSeq[OtherPomElem] = {
     findAllChildElemsOfType(classTag[OtherPomElem])
+  }
+
+  def propertyMap: Map[String, String] = {
+    // No namespace?
+    properties.map(prop => (prop.localName -> prop.text)).toMap
   }
 }
 

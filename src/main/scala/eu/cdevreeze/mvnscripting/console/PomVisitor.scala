@@ -61,10 +61,10 @@ object PomVisitor {
 
     def apply(projectElems: immutable.IndexedSeq[ProjectElem]): Unit = {
       val allDependencies = projectElems.flatMap(_.findAllElemsOfType(classTag[DependencyElem]))
+
       val filteredDependencies =
         allDependencies filter { d =>
-          val propertyMap = getPropertyMap(ProjectElem(d.underlyingElem.rootElem))
-          d.versionOption.exists(v => elemValueContains(v, "SNAPSHOT", propertyMap))
+          d.versionOption.exists(v => v.resolvedValue(v.propertyMapInProject).contains("SNAPSHOT"))
         }
 
       filteredDependencies foreach { dependency =>
@@ -72,22 +72,32 @@ object PomVisitor {
         println(s"Snapshot dependency in file ${dependency.underlyingElem.docUri}:\n${dependency.underlyingElem.underlyingElem}")
       }
     }
+  }
 
-    private def getPropertyMap(projectElem: ProjectElem): Map[String, String] = {
-      val propElems = projectElem.propertiesOption.toIndexedSeq.flatMap(_.properties)
-      propElems.map(e => (e.resolvedName.localPart -> e.text)).toMap
-    }
+  final class PrintPotentiallyConflictingDependencies extends PomCollectionScript {
 
-    // Code smell, of course. We need to model property content.
+    def apply(projectElems: immutable.IndexedSeq[ProjectElem]): Unit = {
+      val allDependencies = projectElems.flatMap(_.findAllElemsOfType(classTag[DependencyElem]))
 
-    private def elemValueContains(elm: PomElem, value: String, propertyMap: Map[String, String]): Boolean = {
-      val text = elm.text
+      val dependenciesHavingVersion = allDependencies.filter(_.versionOption.isDefined)
 
-      if (text.startsWith("${") && text.endsWith("}")) {
-        val propKey = text.drop(2).dropRight(1)
-        propertyMap.get(propKey).exists(_.contains(value))
-      } else {
-        text.contains(value)
+      val dependencyGroups =
+        dependenciesHavingVersion groupBy { d =>
+          val propertyMap = d.propertyMapInProject
+          (d.groupIdOption.get.resolvedValue(propertyMap) -> d.artifactIdOption.get.resolvedValue(propertyMap))
+        }
+
+      val interestingDependencyGroups =
+        dependencyGroups.filter(_._2.map(e => e.versionOption.get.resolvedValue(e.propertyMapInProject)).distinct.size >= 2).values.toVector
+
+      interestingDependencyGroups foreach { dependencyGroup =>
+        val versionValues = dependencyGroup.flatMap(_.versionOption).map(e => e.resolvedValue(e.propertyMapInProject))
+        val groupId = dependencyGroup.head.groupIdOption.get
+        val artifactId = dependencyGroup.head.artifactIdOption.get
+
+        println()
+        println(s"Artifact ${groupId.resolvedValue(groupId.propertyMapInProject)}:${artifactId.resolvedValue(artifactId.propertyMapInProject)} has versions ${versionValues.sorted.distinct.mkString(", ")}")
+        println(s"\tThese artifacts occur in files ${dependencyGroup.map(_.underlyingElem.docUri).distinct.sortBy(_.toString).mkString(", ")}")
       }
     }
   }

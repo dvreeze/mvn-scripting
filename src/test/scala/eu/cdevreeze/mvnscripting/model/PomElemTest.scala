@@ -37,32 +37,34 @@ class PomElemTest extends FunSuite {
 
     val projectElem: ProjectElem = ProjectElem(doc.documentElement, doc.uriOption)
 
+    val propertyMap = projectElem.propertyMap
+
     assertResult(PomElem.ProjectEName) {
       projectElem.resolvedName
     }
 
     assertResult(Some("4.0.0")) {
-      projectElem.modelVersionOption.map(_.value)
+      projectElem.modelVersionOption.map(_.resolvedValue(propertyMap))
     }
 
     assertResult(Some("org.sonatype.mavenbook.simple")) {
-      projectElem.groupIdOption.map(_.value)
+      projectElem.groupIdOption.map(_.resolvedValue(propertyMap))
     }
     assertResult(Some("simple")) {
-      projectElem.artifactIdOption.map(_.value)
+      projectElem.artifactIdOption.map(_.resolvedValue(propertyMap))
     }
     assertResult(Some("1.0-SNAPSHOT")) {
-      projectElem.versionOption.map(_.value)
+      projectElem.versionOption.map(_.resolvedValue(propertyMap))
     }
     assertResult(Some("jar")) {
-      projectElem.packagingOption.map(_.value)
+      projectElem.packagingOption.map(_.resolvedValue(propertyMap))
     }
 
     assertResult(Some("simple")) {
-      projectElem.nameOption.map(_.value)
+      projectElem.nameOption.map(_.resolvedValue(propertyMap))
     }
     assertResult(Some("http://maven.apache.org")) {
-      projectElem.urlOption.map(_.value)
+      projectElem.urlOption.map(_.resolvedValue(propertyMap))
     }
 
     assertResult(None) {
@@ -82,16 +84,16 @@ class PomElemTest extends FunSuite {
     val firstDependency = dependencies.head
 
     assertResult(Some("junit")) {
-      firstDependency.groupIdOption.map(_.value)
+      firstDependency.groupIdOption.map(e => e.resolvedValue(e.propertyMapInProject))
     }
     assertResult(Some("junit")) {
-      firstDependency.artifactIdOption.map(_.value)
+      firstDependency.artifactIdOption.map(e => e.resolvedValue(e.propertyMapInProject))
     }
     assertResult(Some("3.8.1")) {
-      firstDependency.versionOption.map(_.value)
+      firstDependency.versionOption.map(e => e.resolvedValue(e.propertyMapInProject))
     }
     assertResult(Some("test")) {
-      firstDependency.scopeOption.map(_.value)
+      firstDependency.scopeOption.map(e => e.resolvedValue(e.propertyMapInProject))
     }
 
     assertResult(None) {
